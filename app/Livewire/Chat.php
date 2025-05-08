@@ -13,7 +13,7 @@ class Chat extends Component
     public $sender_id, $reciever_id, $message='';
     
     protected $rules = [
-        'message' => 'required|string',
+        'message' => 'required',
     ];
 
     public function mount($userId)
@@ -31,13 +31,16 @@ class Chat extends Component
 
     public function sendMessage()
     {
+        // dd("fsfsdfsdf");
         $this->validate();
+        $this->saveMessage();
         $this->message = '';
         $this->dispatch('message-sent');
     }
 
     public function saveMessage()
     {
+      
         Message::create([
             'sender_id' => $this->sender_id,
             'reciever_id' => $this->reciever_id,
