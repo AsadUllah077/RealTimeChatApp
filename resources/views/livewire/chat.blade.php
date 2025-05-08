@@ -63,7 +63,8 @@
                         <img src="https://pagedone.io/asset/uploads/1704091591.png" alt="Hailey image"
                             class="w-10 h-11">
                     </div>
-                    <div
+
+                    <form wire:submit.prevent="sendMessage"
                         class="w-full pl-3 pr-1 py-1 rounded-3xl border border-gray-200 items-center gap-2 inline-flex justify-between">
                         <div class="flex items-center gap-2 w-full">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"
@@ -74,9 +75,10 @@
                                         stroke="#4F46E5" stroke-width="1.6" />
                                 </g>
                             </svg>
-                            <input
-                                class="grow shrink basis-0 text-black text-xs font-medium leading-4 focus:outline-none "
-                                placeholder="Type here...">
+                            <input wire:model.defer="message"
+       wire:key="message-input-{{ now()->timestamp }}"
+       class="rounded grow shrink basis-0 text-black text-xs font-medium leading-4 focus:outline-none" 
+       placeholder="Type here...">
                         </div>
                         <div class="flex items-center gap-2">
                             <svg class="cursor-pointer" xmlns="http://www.w3.org/2000/svg" width="22" height="22"
@@ -98,7 +100,7 @@
                                     </g>
                                 </g>
                             </svg>
-                            <button class="items-center flex px-3 py-2 bg-blue-600 rounded-full shadow ">
+                            <button type="submit" class="items-center flex px-3 py-2 bg-blue-600 rounded-full shadow ">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                     viewBox="0 0 16 16" fill="none">
                                     <g id="Send 01">
@@ -110,9 +112,19 @@
                                 <h3 class="text-white  text-xs font-semibold leading-4 px-2">Send</h3>
                             </button>
                         </div>
-                    </div>
+                    </form>
+
                 </div>
             </div>
         </div>
     </div>
 </div>
+@script
+<script>
+    Livewire.on('message-sent', () => {
+        // Force clear the input value
+        let input = document.querySelector('[wire\\:model="message"]');
+        if (input) input.value = '';
+    });
+</script>
+@endscript
