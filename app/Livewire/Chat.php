@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Message;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -11,6 +12,7 @@ class Chat extends Component
 {
     public $userId, $user;
     public $sender_id, $reciever_id, $message='';
+    public $messages=[];
     
     protected $rules = [
         'message' => 'required',
@@ -22,6 +24,7 @@ class Chat extends Component
         $this->user = User::find($userId);
         $this->sender_id = Auth::user()->id;
         $this->reciever_id = $userId;
+        $this->messages = $this->getMessages();
     }
 
     public function render()
@@ -32,7 +35,7 @@ class Chat extends Component
     public function sendMessage()
     {
         // dd("fsfsdfsdf");
-        $this->validate();
+        // $this->validate();
         $this->saveMessage();
         $this->message = '';
         $this->dispatch('message-sent');
@@ -48,4 +51,20 @@ class Chat extends Component
             'is_read' => false,
         ]);
     }
+
+    public function getMessages(){
+        $this->messages=Message::with('sender', 'reciever')
+        ->where(function($query){
+            $query->where('sender_id', $this->sender_id)
+            ->where('reciever_id', $this->reciever_id);
+        })
+        ->orWhere(function($query){
+            $query->where('sender_id', $this->reciever_id)
+            ->where('reciever_id', $this->sender_id);
+        })->get();
+
+        return $this->messages;
+    }
+
+    
 }

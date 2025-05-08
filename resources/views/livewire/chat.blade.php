@@ -8,62 +8,49 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-2">
                 <div class="w-full">
+                    {{-- reciever --}}
+                    @foreach ($messages as $message)
+                        
+                   @if ($message->sender_id !== auth()->id())
                     <div class="grid pb-11">
                         <div class="flex gap-2.5 mb-4">
                             <img src="https://pagedone.io/asset/uploads/1710412177.png" alt="Shanay image"
                                 class="w-10 h-11">
                             <div class="grid">
-                                <h5 class="text-gray-900 text-sm font-semibold leading-snug pb-1">Shanay cruz</h5>
+                                <h5 class="text-gray-900 text-sm font-semibold leading-snug pb-1">{{$message->sender->name}}</h5>
                                 <div class="w-max grid">
                                     <div
                                         class="px-3.5 py-2 bg-gray-100 rounded justify-start  items-center gap-3 inline-flex">
-                                        <h5 class="text-gray-900 text-sm font-normal leading-snug">Guts, I need a review
-                                            of work. Are you ready?</h5>
+                                        <h5 class="text-gray-900 text-sm font-normal leading-snug">{{$message->message}}</h5>
                                     </div>
                                     <div class="justify-end items-center inline-flex mb-2.5">
-                                        <h6 class="text-gray-500 text-xs font-normal leading-4 py-1">05:14 PM</h6>
+                                        <h6 class="text-gray-500 text-xs font-normal leading-4 py-1">{{$message->created_at->format('h:i A')}}</h6>
                                     </div>
                                 </div>
-                                <div class="w-max grid">
-                                    <div
-                                        class="px-3.5 py-2 bg-gray-100 rounded justify-start items-center gap-3 inline-flex">
-                                        <h5 class="text-gray-900 text-sm font-normal leading-snug">Let me know</h5>
-                                    </div>
-                                    <div class="justify-end items-center inline-flex mb-2.5">
-                                        <h6 class="text-gray-500 text-xs font-normal leading-4 py-1">05:14 PM</h6>
-                                    </div>
-                                </div>
+                                
                             </div>
                         </div>
                     </div>
-                    <div class="flex gap-2.5 justify-end pb-40">
+                    @else
+                    {{-- sender --}}
+                    <div class="flex gap-2.5 justify-end pb-4">
                         <div class="">
                             <div class="grid mb-2">
                                 <h5 class="text-right text-gray-900 text-sm font-semibold leading-snug pb-1">You</h5>
                                 <div class="px-3 py-2 bg-indigo-600 rounded">
-                                    <h2 class="text-white text-sm font-normal leading-snug">Yes, let’s see, send your
-                                        work here</h2>
+                                    <h2 class="text-white text-sm font-normal leading-snug">{{$message->message}}</h2>
                                 </div>
                                 <div class="justify-start items-center inline-flex">
-                                    <h3 class="text-gray-500 text-xs font-normal leading-4 py-1">05:14 PM</h3>
+                                    <h3 class="text-gray-500 text-xs font-normal leading-4 py-1">{{$message->created_at->format('h:i A')}}</h3>
                                 </div>
                             </div>
-                            <div class="justify-center">
-                                <div class="grid w-fit ml-auto">
-                                    <div class="px-3 py-2 bg-indigo-600 rounded ">
-                                        <h2 class="text-white text-sm font-normal leading-snug">Anyone on for lunch
-                                            today</h2>
-                                    </div>
-                                    <div class="justify-start items-center inline-flex">
-                                        <h3 class="text-gray-500 text-xs font-normal leading-4 py-1">You</h3>
-                                    </div>
-                                </div>
-                            </div>
+                            
                         </div>
                         <img src="https://pagedone.io/asset/uploads/1704091591.png" alt="Hailey image"
                             class="w-10 h-11">
                     </div>
-
+                    @endif
+                    @endforeach
                     <form wire:submit.prevent="sendMessage"
                         class="w-full pl-3 pr-1 py-1 rounded-3xl border border-gray-200 items-center gap-2 inline-flex justify-between">
                         <div class="flex items-center gap-2 w-full">
@@ -75,10 +62,9 @@
                                         stroke="#4F46E5" stroke-width="1.6" />
                                 </g>
                             </svg>
-                            <input wire:model.defer="message"
-       wire:key="message-input-{{ now()->timestamp }}"
-       class="rounded grow shrink basis-0 text-black text-xs font-medium leading-4 focus:outline-none" 
-       placeholder="Type here...">
+                            <input wire:model.defer="message" wire:key="message-input-{{ now()->timestamp }}"
+                                class="rounded grow shrink basis-0 text-black text-xs font-medium leading-4 focus:outline-none"
+                                placeholder="Type here...">
                         </div>
                         <div class="flex items-center gap-2">
                             <svg class="cursor-pointer" xmlns="http://www.w3.org/2000/svg" width="22" height="22"
@@ -120,11 +106,11 @@
     </div>
 </div>
 @script
-<script>
-    Livewire.on('message-sent', () => {
-        // Force clear the input value
-        let input = document.querySelector('[wire\\:model="message"]');
-        if (input) input.value = '';
-    });
-</script>
+    <script>
+        Livewire.on('message-sent', () => {
+            // Force clear the input value
+            let input = document.querySelector('[wire\\:model="message"]');
+            if (input) input.value = '';
+        });
+    </script>
 @endscript

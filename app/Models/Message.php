@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Message extends Model
@@ -16,12 +17,18 @@ class Message extends Model
         'is_read',
     ];
 
-    public function sender(){
+    public function sender(){   
         return $this->belongsTo(User::class, 'sender_id', 'id');
     }
 
     public function reciever(){
         return $this->belongsTo(User::class, 'reciever_id', 'id');
+    }
+    public static function boot(){
+        parent::boot();
+        static::creating(function($model){
+            $model->created_at = Carbon::now();
+        });
     }
 }
 
