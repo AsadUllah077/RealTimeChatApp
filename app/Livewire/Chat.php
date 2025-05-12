@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Events\MessageSendEvent;
 use App\Models\Message;
 use App\Models\User;
 use Carbon\Carbon;
@@ -11,9 +12,9 @@ use Livewire\Component;
 class Chat extends Component
 {
     public $userId, $user;
-    public $sender_id, $reciever_id, $message='';
-    public $messages=[];
-    
+    public $sender_id, $reciever_id, $message = '';
+    public $messages = [];
+
     protected $rules = [
         'message' => 'required',
     ];
@@ -36,15 +37,26 @@ class Chat extends Component
     {
         // dd("fsfsdfsdf");
         // $this->validate();
-        $this->saveMessage();
+        $sentmessage = $this->saveMessage();
+        $this->messages[] = $sentmessage;
+        // dd( $sentmessage);
+        broadcast(new MessageSendEvent($sentmessage));
         $this->message = '';
         $this->dispatch('message-sent');
     }
 
+    #[on('echo-private:chat-channel.{senderId}, MessageSendEvent')]
+    public function listenMessage($event)
+    {
+        
+        $newMesssage = Message::find($event['message']['id'])->load('sender:id,name', 'reciever:id,name');
+        $this->messages[] = $newMesssage;
+    }
+
     public function saveMessage()
     {
-      
-        Message::create([
+
+        return Message::create([
             'sender_id' => $this->sender_id,
             'reciever_id' => $this->reciever_id,
             'message' => $this->message,
@@ -52,19 +64,18 @@ class Chat extends Component
         ]);
     }
 
-    public function getMessages(){
-        $this->messages=Message::with('sender', 'reciever')
-        ->where(function($query){
-            $query->where('sender_id', $this->sender_id)
-            ->where('reciever_id', $this->reciever_id);
-        })
-        ->orWhere(function($query){
-            $query->where('sender_id', $this->reciever_id)
-            ->where('reciever_id', $this->sender_id);
-        })->get();
+    public function getMessages()
+    {
+        $this->messages = Message::with('sender', 'reciever')
+            ->where(function ($query) {
+                $query->where('sender_id', $this->sender_id)
+                    ->where('reciever_id', $this->reciever_id);
+            })
+            ->orWhere(function ($query) {
+                $query->where('sender_id', $this->reciever_id)
+                    ->where('reciever_id', $this->sender_id);
+            })->get();
 
         return $this->messages;
     }
-
-    
 }

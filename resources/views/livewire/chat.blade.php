@@ -106,11 +106,21 @@
     </div>
 </div>
 @script
-    <script>
+  <script>
+    document.addEventListener('livewire:initialized', () => {
+        // Clear message input after sending
         Livewire.on('message-sent', () => {
-            // Force clear the input value
             let input = document.querySelector('[wire\\:model="message"]');
             if (input) input.value = '';
         });
-    </script>
+
+        // Listen for incoming messages on private channel
+        Echo.private(`chat-channel.{{ Auth::id() }}`)
+            .listen('MessageSendEvent', (e) => {
+                // Dispatch to Livewire component
+                @this.dispatch('message-received', { message: e.message });
+            });
+    });
+</script>
+
 @endscript
