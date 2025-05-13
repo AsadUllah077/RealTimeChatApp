@@ -63,7 +63,7 @@ class Chat extends Component
 
 
     public function unReadCount(){
-        return Message::where('sender_id', $this->sender_id)->where('is_read', false)->count();
+        return Message::where('reciever_id', $this->reciever_id)->where('is_read', false)->count();
     }
 
     #[On('message-received')]
