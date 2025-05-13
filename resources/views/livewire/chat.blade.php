@@ -103,8 +103,26 @@
     <script type="module">
         let typingTimeOut = null;
         document.addEventListener('livewire:initialized', () => {
+            
+            Echo.private(`chat-channel.{{ $sender_id }}`)
+                .listen('MessageTyping', (e) => {
+                    let messageContainer = document.getElementById('typeHere');
+                    if (messageContainer) {
+                        messageContainer.placeholder = 'Typing.....';
+
+                        messageContainer.classList.add('asad');
+                    }
+
+                    clearTimeout(typingTimeOut);
+                    typingTimeOut = setTimeout(() => {
+                        if (messageContainer) {
+                            messageContainer.classList.remove('asad');
+                            messageContainer.placeholder = 'Typing here..';
+                        }
+                    }, 2000)
+                });
             Livewire.on('message-sent', () => {
-                let input = document.querySelector('[wire\\:model="message"]');
+                let input =  document.getElementById('typeHere');
                 if (input) input.value = '';
             });
 
@@ -125,23 +143,6 @@
                 });
 
 
-            Echo.private(`chat-channel.{{ $sender_id }}`)
-                .listen('MessageTyping', (e) => {
-                    let messageContainer = document.getElementById('typeHere');
-                    if (messageContainer) {
-                        messageContainer.placeholder = 'Typing.....';
-
-                        messageContainer.classList.add('asad');
-                    }
-
-                    clearTimeout(typingTimeOut);
-                    typingTimeOut = setTimeout(() => {
-                        if (messageContainer) {
-                            messageContainer.classList.remove('asad');
-                            messageContainer.placeholder = 'Typing here..';
-                        }
-                    }, 2000)
-                });
         });
     </script>
 @endscript
