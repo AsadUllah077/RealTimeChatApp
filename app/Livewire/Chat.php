@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Events\MessageSendEvent;
+use App\Events\MessageTyping;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -63,6 +64,11 @@ class Chat extends Component
         $this->dispatch('message-load');
     }
 
+
+    public function userTyping(){
+        broadcast( new MessageTyping($this->sender_id, $this->reciever_id))->toOthers();
+    }
+
     public function saveMessage()
     {
         return Message::create([
@@ -77,7 +83,7 @@ class Chat extends Component
     {
         return Message::with('sender:id,name', 'reciever:id,name')
             ->where(function ($query) {
-                
+
                 $query->where('sender_id', $this->sender_id)
                     ->where('reciever_id', $this->reciever_id);
             })
