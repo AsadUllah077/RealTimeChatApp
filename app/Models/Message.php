@@ -13,6 +13,7 @@ class Message extends Model
         'message',
         'file_name',
         'file_path',
+        'audio_path',
         'file_type',
         'file_original_name',
         'is_read',
