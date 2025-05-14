@@ -62,7 +62,7 @@ class Chat extends Component
         $this->file = '';
 
         // Dispatch frontend event
-        $this->dispatch('message-load');
+        $this->dispatch('message-load-send');
         $this->dispatch('message-sent');
 
     }
@@ -77,7 +77,7 @@ class Chat extends Component
     {
         // Add received message to messages list
         $this->messages = $this->getMessages();
-        $this->dispatch('message-load');
+        $this->dispatch('message-load-send');
         $this->dispatch('message-sent');
     }
 

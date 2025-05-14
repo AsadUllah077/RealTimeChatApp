@@ -33,17 +33,17 @@
                                             <div class="w-max grid">
                                                 <div
                                                     class="px-3.5 py-2 bg-gray-100 rounded justify-start items-center gap-3 inline-flex">
-                                                    @if($message['file_path'])
-                                                        @if(str_starts_with($message['file_type'], 'image/'))
+                                                    @if ($message['file_path'])
+                                                        @if (str_starts_with($message['file_type'], 'image/'))
                                                             <img src="{{ asset('storage/' . $message['file_path']) }}"
-                                                                 class="max-w-xs max-h-48 object-cover rounded-lg"
-                                                                 alt="Image preview">
+                                                                class="max-w-xs max-h-48 object-cover rounded-lg"
+                                                                alt="Image preview">
                                                         @else
                                                             <div class="flex flex-col">
 
                                                                 <a href="{{ asset('storage/' . $message['file_path']) }}"
-                                                                   target="_blank"
-                                                                   class="text-blue-600 underline text-sm">
+                                                                    target="_blank"
+                                                                    class="text-blue-600 underline text-sm">
                                                                     {{ $message['file_original_name'] ?? 'Download File' }}
                                                                 </a>
                                                             </div>
@@ -72,19 +72,18 @@
                                                 class="text-right text-gray-900 text-sm font-semibold leading-snug pb-1">
                                                 You</h5>
                                             <div class="px-3 py-2 bg-indigo-600 rounded">
-                                                @if($message['file_path'])
-                                                    @if(str_starts_with($message['file_type'], 'image/'))
+                                                @if ($message['file_path'])
+                                                    @if (str_starts_with($message['file_type'], 'image/'))
                                                         <img src="{{ asset('storage/' . $message['file_path']) }}"
-                                                             class="max-w-xs max-h-48 object-cover rounded-lg"
-                                                             alt="Image preview">
+                                                            class="max-w-xs max-h-48 object-cover rounded-lg"
+                                                            alt="Image preview">
                                                     @else
                                                         <div class="flex flex-col">
                                                             <span class="text-white text-sm font-normal">
                                                                 File attached:
                                                             </span>
                                                             <a href="{{ asset('storage/' . $message['file_path']) }}"
-                                                               target="_blank"
-                                                               class="text-white underline text-sm">
+                                                                target="_blank" class="text-white underline text-sm">
                                                                 {{ $message['file_original_name'] ?? 'Download File' }}
                                                             </a>
                                                         </div>
@@ -151,20 +150,19 @@
                                 <div class="flex items-center gap-2">
                                     @if ($isImage)
                                         <img src="{{ $file->temporaryUrl() }}"
-                                             class="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow"
-                                             alt="Image preview">
+                                            class="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow"
+                                            alt="Image preview">
                                         <span class="text-sm text-gray-700">{{ $fileName }}</span>
                                     @else
-                                    <div class="mt-1 text-xs text-gray-500">
-                                        <span
-                                           class="text-blue-600 hover:underline">
-                                            {{$fileName}}
-                                        </span>
-                                    </div>
+                                        <div class="mt-1 text-xs text-gray-500">
+                                            <span class="text-blue-600 hover:underline">
+                                                {{ $fileName }}
+                                            </span>
+                                        </div>
                                     @endif
                                 </div>
                                 <button type="button" wire:click="$set('file', null)"
-                                        class="text-red-500 hover:text-red-700 font-bold">
+                                    class="text-red-500 hover:text-red-700 font-bold">
                                     ×
                                 </button>
                             </div>
@@ -199,8 +197,8 @@
                             messageContainer.placeholder = 'Typing here..';
                         }
                     }, 2000)
-                }).listen('MessageSendEvent', (e)=>{
-                    const audio = new Audio('{{asset('sounds/sound.mp3')}}');
+                }).listen('MessageSendEvent', (e) => {
+                    const audio = new Audio('{{ asset('sounds/sound.mp3') }}');
                     audio.play();
                 });
 
@@ -211,17 +209,27 @@
             });
 
             document.addEventListener('livewire:init', () => {
-    Livewire.hook('message.processed', (component) => {
-        if (component.serverMemo.data.messages) {
-            setTimeout(() => {
-                let chatContainer = document.getElementById('chat-container');
-                if (chatContainer) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            }, 100);
-        }
-    });
-});
+                Livewire.hook('message.processed', (component) => {
+                    if (component.serverMemo.data.messages) {
+                        setTimeout(() => {
+                            let chatContainer = document.getElementById('chat-container');
+                            if (chatContainer) {
+                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                            }
+                        }, 100);
+                    }
+                });
+            });
+
+
+            Livewire.on('message-load-send', () => {
+                setTimeout(() => {
+                    let chatContainer = document.getElementById('chat-container');
+                    if (chatContainer) {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }
+                }, 100);
+            });
 
             Echo.private(`chat-channel.{{ Auth::id() }}`)
                 .listen('MessageSendEvent', (e) => {
