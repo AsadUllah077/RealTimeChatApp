@@ -13,6 +13,7 @@ class Message extends Model
         'message',
         'file_name',
         'file_path',
+        'file_type',
         'file_original_name',
         'is_read',
     ];
@@ -34,7 +35,7 @@ class Message extends Model
         });
     }
 
-    
+
     public function unreadMessages()
     {
         return $this->hasMany(Message::class, 'sender_id', localKey: 'id')

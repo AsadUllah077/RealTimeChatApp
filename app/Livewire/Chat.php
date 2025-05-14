@@ -10,12 +10,14 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class Chat extends Component
 {
+    use WithFileUploads;
     public $userId, $user;
-    public $sender_id, $reciever_id, $message = '';
-    
+    public $sender_id, $reciever_id, $message = '',$file;
+
     public $messages = [];
     public $new_messages = [];
     // protected $rules = [
@@ -30,6 +32,9 @@ class Chat extends Component
         $this->reciever_id = $userId;
         $this->messages = $this->getMessages();
         $this->markAsReadMessages();
+
+        // This will run after the component renders
+        $this->dispatch('message-load');
     }
 
     public function render()
@@ -41,20 +46,21 @@ class Chat extends Component
     public function sendMessage()
     {
         // $this->validate();
-        
+
         $sentMessage = $this->saveMessage();
-        
+
         // Broadcast the message
         broadcast(new MessageSendEvent($sentMessage))->toOthers();
         $countUnread = $this->unReadCount();
         broadcast(new UnreadMessages($this->sender_id, $this->reciever_id, $countUnread))->toOthers();
-        
+
         // Add message to current user's messages
         $this->messages[] = $sentMessage;
-        
+
         // Reset message input
         $this->message = '';
-        
+        $this->file = '';
+
         // Dispatch frontend event
         $this->dispatch('message-load');
         $this->dispatch('message-sent');
@@ -89,12 +95,23 @@ class Chat extends Component
 
     public function saveMessage()
     {
+
+        $fileName = $this->file ? $this->file->hashName() : null;
+        $fileOriginalName = $this->file ? $this->file->getClientOriginalName() : null;
+        $filePath = $this->file ? $this->file->store('chat_files', 'public') : null;
+        $fileType = $this->file ? $this->file->getMimeType() : null;
+
         return Message::create([
             'sender_id' => $this->sender_id,
             'reciever_id' => $this->reciever_id,
             'message' => $this->message,
+            'file_name' => $fileName,
+            'file_path' => $filePath,
+            'file_original_name' => $fileOriginalName,
+            'file_type' => $fileType,
             'is_read' => false,
         ]);
+
     }
 
     public function getMessages()

@@ -16,7 +16,8 @@
                 <div class="w-full">
 
                     {{-- Chat messages container --}}
-                    <div id="chat-container" class="max-h-[500px] overflow-y-auto pr-2">
+                    {{-- Chat messages container --}}
+                    <div id="chat-container" x-data x-init="$nextTick(() => { $el.scrollTop = $el.scrollHeight })" class="max-h-[500px] overflow-y-auto pr-2">
 
                         @foreach ($messages as $message)
                             @if ($message['sender_id'] !== auth()->id())
@@ -32,9 +33,26 @@
                                             <div class="w-max grid">
                                                 <div
                                                     class="px-3.5 py-2 bg-gray-100 rounded justify-start items-center gap-3 inline-flex">
-                                                    <h5 class="text-gray-900 text-sm font-normal leading-snug">
-                                                        {{ $message['message'] }}
-                                                    </h5>
+                                                    @if($message['file_path'])
+                                                        @if(str_starts_with($message['file_type'], 'image/'))
+                                                            <img src="{{ asset('storage/' . $message['file_path']) }}"
+                                                                 class="max-w-xs max-h-48 object-cover rounded-lg"
+                                                                 alt="Image preview">
+                                                        @else
+                                                            <div class="flex flex-col">
+
+                                                                <a href="{{ asset('storage/' . $message['file_path']) }}"
+                                                                   target="_blank"
+                                                                   class="text-blue-600 underline text-sm">
+                                                                    {{ $message['file_original_name'] ?? 'Download File' }}
+                                                                </a>
+                                                            </div>
+                                                        @endif
+                                                    @else
+                                                        <h5 class="text-gray-900 text-sm font-normal leading-snug">
+                                                            {{ $message['message'] }}
+                                                        </h5>
+                                                    @endif
                                                 </div>
                                                 <div class="justify-end items-center inline-flex mb-2.5">
                                                     <h6 class="text-gray-500 text-xs font-normal leading-4 py-1">
@@ -54,9 +72,28 @@
                                                 class="text-right text-gray-900 text-sm font-semibold leading-snug pb-1">
                                                 You</h5>
                                             <div class="px-3 py-2 bg-indigo-600 rounded">
-                                                <h2 class="text-white text-sm font-normal leading-snug">
-                                                    {{ $message['message'] }}
-                                                </h2>
+                                                @if($message['file_path'])
+                                                    @if(str_starts_with($message['file_type'], 'image/'))
+                                                        <img src="{{ asset('storage/' . $message['file_path']) }}"
+                                                             class="max-w-xs max-h-48 object-cover rounded-lg"
+                                                             alt="Image preview">
+                                                    @else
+                                                        <div class="flex flex-col">
+                                                            <span class="text-white text-sm font-normal">
+                                                                File attached:
+                                                            </span>
+                                                            <a href="{{ asset('storage/' . $message['file_path']) }}"
+                                                               target="_blank"
+                                                               class="text-white underline text-sm">
+                                                                {{ $message['file_original_name'] ?? 'Download File' }}
+                                                            </a>
+                                                        </div>
+                                                    @endif
+                                                @else
+                                                    <h2 class="text-white text-sm font-normal leading-snug">
+                                                        {{ $message['message'] }}
+                                                    </h2>
+                                                @endif
                                             </div>
                                             <div class="justify-start items-center inline-flex">
                                                 <h3 class="text-gray-500 text-xs font-normal leading-4 py-1">
@@ -82,6 +119,14 @@
                                 class="rounded grow shrink basis-0 text-black text-xs font-medium leading-4 focus:outline-none"
                                 placeholder="Type here...">
                         </div>
+                        <label for="fileChat">
+                            <input wire:model="file" type="file" class="hidden" name="file" id="fileChat">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke-width="1.5" stroke="currentColor" class="size-6 cursor-pointer">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M7.5 7.5h-.75A2.25 2.25 0 0 0 4.5 9.75v7.5a2.25 2.25 0 0 0 2.25 2.25h7.5a2.25 2.25 0 0 0 2.25-2.25v-7.5a2.25 2.25 0 0 0-2.25-2.25h-.75m0-3-3-3m0 0-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25h-7.5a2.25 2.25 0 0 1-2.25-2.25v-.75" />
+                            </svg>
+                        </label>
                         <button type="submit" class="items-center flex px-3 py-2 bg-blue-600 rounded-full shadow">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
                                 fill="none">
@@ -93,6 +138,40 @@
                         </button>
                     </form>
 
+                    {{-- File preview section --}}
+                    @if ($file)
+                        @php
+                            $mimeType = $file->getMimeType();
+                            $isImage = str_starts_with($mimeType, 'image/');
+                            $fileName = $file->getClientOriginalName();
+                        @endphp
+
+                        <div class="mt-2 p-2 bg-gray-100 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    @if ($isImage)
+                                        <img src="{{ $file->temporaryUrl() }}"
+                                             class="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow"
+                                             alt="Image preview">
+                                        <span class="text-sm text-gray-700">{{ $fileName }}</span>
+                                    @else
+                                    <div class="mt-1 text-xs text-gray-500">
+                                        <span
+                                           class="text-blue-600 hover:underline">
+                                            {{$fileName}}
+                                        </span>
+                                    </div>
+                                    @endif
+                                </div>
+                                <button type="button" wire:click="$set('file', null)"
+                                        class="text-red-500 hover:text-red-700 font-bold">
+                                    ×
+                                </button>
+                            </div>
+
+                        </div>
+                    @endif
+
                 </div>
             </div>
         </div>
@@ -103,7 +182,7 @@
     <script type="module">
         let typingTimeOut = null;
         document.addEventListener('livewire:initialized', () => {
-            
+
             Echo.private(`chat-channel.{{ $sender_id }}`)
                 .listen('MessageTyping', (e) => {
                     let messageContainer = document.getElementById('typeHere');
@@ -120,20 +199,29 @@
                             messageContainer.placeholder = 'Typing here..';
                         }
                     }, 2000)
+                }).listen('MessageSendEvent', (e)=>{
+                    const audio = new Audio('{{asset('sounds/sound.mp3')}}');
+                    audio.play();
                 });
+
+
             Livewire.on('message-sent', () => {
-                let input =  document.getElementById('typeHere');
+                let input = document.getElementById('typeHere');
                 if (input) input.value = '';
             });
 
-            Livewire.on('message-load', () => {
-                setTimeout(() => {
-                    let chatContainer = document.getElementById('chat-container');
-                    if (chatContainer) {
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    }
-                }, 100);
-            });
+            document.addEventListener('livewire:init', () => {
+    Livewire.hook('message.processed', (component) => {
+        if (component.serverMemo.data.messages) {
+            setTimeout(() => {
+                let chatContainer = document.getElementById('chat-container');
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            }, 100);
+        }
+    });
+});
 
             Echo.private(`chat-channel.{{ Auth::id() }}`)
                 .listen('MessageSendEvent', (e) => {
