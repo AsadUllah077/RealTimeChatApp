@@ -183,6 +183,39 @@ class GroupChat extends Component
         ]);
     }
 
+    public function addReaction($messageId, $reaction)
+    {
+        // dd("fsfsd");
+        $message = Message::findOrFail($messageId);
+
+
+        // Check if user already reacted with this reaction
+        $existingReaction = MessageReaction::where('message_id', $messageId)
+            ->where('user_id', auth()->id())
+            ->where('reaction', $reaction)
+            ->first();
+
+        if ($existingReaction) {
+            // Remove reaction if same reaction clicked again
+            $existingReaction->delete();
+        } else {
+            // Remove any existing reaction from this user
+            MessageReaction::where('message_id', $messageId)
+                ->where('user_id', auth()->id())
+                ->delete();
+
+            // Add new reaction
+            $newReaction = MessageReaction::create([
+                'message_id' => $messageId,
+                'user_id' => auth()->id(),
+                'reaction' => $reaction,
+            ]);
+
+            broadcast(new MessageReactionEvent($newReaction))->toOthers();
+        }
+
+        $this->messages = $this->getMessages();
+    }
     public function getMessages()
     {
         return Message::with(['sender:id,name', 'reactions.user', 'seenBy:id,name'])

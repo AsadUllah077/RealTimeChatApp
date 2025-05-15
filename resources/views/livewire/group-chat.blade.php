@@ -1,7 +1,6 @@
-<!-- resources/views/livewire/group-chat.blade.php -->
 <div>
     <style>
-        /* Include all the styles from your existing chat component */
+        /* Your existing styles remain the same */
         .asad::placeholder {
             color: green !important;
             font-weight: bold;
@@ -67,9 +66,37 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 5px;
-            display: flex;
+            display: none;
+            /* Hidden by default */
+            flex-wrap: wrap;
             gap: 5px;
             z-index: 10;
+            width: 150px;
+            transition: opacity 0.2s, transform 0.2s;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .reaction-picker[style*="display: block"] {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .reaction-picker {
+            /* existing styles */
+            transition: all 0.2s ease;
+        }
+
+        .reaction-emoji {
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 3px;
+            border-radius: 50%;
+            transition: transform 0.2s;
         }
 
         .reaction-emoji {
@@ -82,6 +109,34 @@
         .reaction-emoji:hover {
             background: #f3f4f6;
             transform: scale(1.2);
+        }
+
+        .file-container {
+            max-width: 200px;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin-top: 4px;
+        }
+
+        .file-preview {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 4px;
+        }
+
+        .file-download {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+
+        .file-download:hover {
+            text-decoration: underline;
         }
     </style>
 
@@ -123,7 +178,6 @@
                         </div>
                     @endforeach
 
-
                     <!-- Typing indicator -->
                     @if (count($typingUsers) > 0)
                         <div class="text-sm text-gray-500 mb-2">
@@ -131,10 +185,11 @@
                         </div>
                     @endif
 
-                    <div id="chat-container" x-data x-init="$nextTick(() => { $el.scrollTop = $el.scrollHeight })" class="max-h-[500px] overflow-y-auto pr-2">
+                    <div id="chat-container" x-data="{ selectedMessage: null }" x-init="$nextTick(() => { $el.scrollTop = $el.scrollHeight })"
+                        class="max-h-[500px] overflow-y-auto pr-2">
                         @foreach ($messages as $message)
                             @if ($message['sender_id'] !== auth()->id())
-                                {{-- Receiver --}}
+                                <!-- Receiver Message -->
                                 <div class="grid pb-11 relative">
                                     <div class="flex gap-2.5 mb-4">
                                         <img src="https://ui-avatars.com/api/?name={{ urlencode($message['sender']['name']) }}&background=random"
@@ -145,7 +200,7 @@
                                             </h5>
                                             <div class="w-max grid">
                                                 <div class="px-3.5 py-2 bg-gray-100 rounded justify-start items-center gap-3 inline-flex relative"
-                                                    @click="selectMessage({{ $message['id'] }})">
+                                                    @click.away="selectedMessage = null">
                                                     @if (isset($message['audio_path']) && $message['audio_path'])
                                                         <audio controls>
                                                             <source
@@ -154,40 +209,72 @@
                                                             Your browser does not support audio messages.
                                                         </audio>
                                                     @elseif (isset($message['file_path']) && $message['file_path'])
-                                                        {{-- File display --}}
+                                                        <div class="file-container">
+                                                            @if (isset($message['mime_type']) && Str::startsWith($message['mime_type'], 'image/'))
+                                                                <img src="{{ asset('storage/' . $message['file_path']) }}"
+                                                                    class="file-preview" alt="File preview">
+                                                            @endif
+
+                                                            <a href="{{ asset('storage/' . $message['file_path']) }}"
+                                                                target="_blank" class="file-download">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                                    fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                                </svg>
+                                                                {{ basename($message['file_path']) }}
+                                                            </a>
+                                                        </div>
                                                     @else
                                                         <h5 class="text-gray-900 text-sm font-normal leading-snug">
                                                             {{ $message['message'] }}
                                                         </h5>
                                                     @endif
-                                                    @if ($selectedMessage == $message['id'])
-                                                        <div class="reaction-picker">
-                                                            @foreach ($reactionTypes as $reaction)
-                                                                <span class="reaction-emoji"
-                                                                    wire:click="reactToMessage({{ $message['id'] }}, '{{ $reaction }}')">
-                                                                    {{ $reaction }}
-                                                                </span>
-                                                            @endforeach
-                                                        </div>
-                                                    @endif
+                                                    <button onclick="toggleReactionPicker({{ $message['id'] }})"
+                                                        class="absolute -bottom-4 right-0 text-gray-500 hover:text-gray-700">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                                        </svg>
+                                                    </button>
+
+                                                    <div id="reaction-picker-{{ $message['id'] }}"
+                                                        class="reaction-picker" style="display: none;">
+                                                        @foreach ($reactionTypes as $reaction)
+                                                            <span class="reaction-emoji"
+                                                                onclick="addReaction({{ $message['id'] }}, '{{ $reaction }}')">
+                                                                {{ $reaction }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
                                                 </div>
                                                 <div class="flex items-center gap-2">
                                                     @if (!empty($message['reactions']))
-                                                        <div class="flex items-center gap-1 mt-1">
-                                                            @foreach (array_unique(array_column($message['reactions'], 'reaction')) as $reaction)
-                                                                <span class="reaction">
-                                                                    {{ $reaction }}
-                                                                </span>
-                                                            @endforeach
-                                                        </div>
-                                                    @endif
+                                                    <div class="flex items-center gap-1 mt-1">
+                                                        @foreach (collect($message['reactions'])->groupBy('reaction') as $reaction => $reactions)
+                                                            <span class="reaction"
+                                                                wire:click="addReaction({{ $message['id'] }}, '{{ $reaction }}')"
+                                                                title="{{ collect($reactions)->pluck('user.name')->join(', ') }}">
+                                                                {{ $reaction }}
+                                                                @if (count($reactions) > 1)
+                                                                    {{ count($reactions) }}
+                                                                @endif
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+
                                                     <div class="justify-end items-center inline-flex mb-2.5">
                                                         <h6 class="text-gray-500 text-xs font-normal leading-4 py-1">
                                                             {{ \Carbon\Carbon::parse($message['created_at'])->format('h:i A') }}
                                                         </h6>
                                                         @if (!empty($message['seen_by']) && collect($message['seen_by'])->pluck('user_id')->contains(Auth::id()))
-    <span class="ml-1 text-xs text-gray-400">Seen</span>
-@endif
+                                                            <span class="ml-1 text-xs text-gray-400">Seen</span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>
@@ -195,7 +282,7 @@
                                     </div>
                                 </div>
                             @else
-                                {{-- Sender --}}
+                                <!-- Sender Message -->
                                 <div class="flex gap-2.5 justify-end pb-4 relative">
                                     <div class="">
                                         <div class="grid mb-2">
@@ -203,7 +290,7 @@
                                                 class="text-right text-gray-900 text-sm font-semibold leading-snug pb-1">
                                                 You</h5>
                                             <div class="px-3 py-2 bg-indigo-600 rounded relative"
-                                                @click="selectMessage({{ $message['id'] }})">
+                                                @click.away="selectedMessage = null">
                                                 @if (isset($message['audio_path']) && $message['audio_path'])
                                                     <audio controls>
                                                         <source src="{{ asset('storage/' . $message['audio_path']) }}"
@@ -211,44 +298,74 @@
                                                         Your browser does not support audio messages.
                                                     </audio>
                                                 @elseif (isset($message['file_path']) && $message['file_path'])
-                                                    {{-- File display --}}
+                                                    <div class="file-container">
+                                                        @if (isset($message['mime_type']) && Str::startsWith($message['mime_type'], 'image/'))
+                                                            <img src="{{ asset('storage/' . $message['file_path']) }}"
+                                                                class="file-preview" alt="File preview">
+                                                        @endif
+
+                                                        <a href="{{ asset('storage/' . $message['file_path']) }}"
+                                                            target="_blank" class="file-download">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                                fill="none" viewBox="0 0 24 24"
+                                                                stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                            </svg>
+                                                            {{ basename($message['file_path']) }}
+                                                        </a>
+                                                    </div>
                                                 @else
                                                     <h2 class="text-white text-sm font-normal leading-snug">
                                                         {{ $message['message'] }}
                                                     </h2>
                                                 @endif
-                                                @if ($selectedMessage == $message['id'])
-                                                    <div class="reaction-picker">
-                                                        @foreach ($reactionTypes as $reaction)
-                                                            <span class="reaction-emoji"
-                                                                wire:click="reactToMessage({{ $message['id'] }}, '{{ $reaction }}')">
-                                                                {{ $reaction }}
-                                                            </span>
-                                                        @endforeach
-                                                    </div>
-                                                @endif
+                                                <button onclick="toggleReactionPicker({{ $message['id'] }})"
+                                                    class="absolute -bottom-4 right-0 text-gray-200 hover:text-white">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                                    </svg>
+                                                </button>
+
+                                                <div id="reaction-picker-{{ $message['id'] }}"
+                                                    class="reaction-picker" style="display: none;">
+                                                    @foreach ($reactionTypes as $reaction)
+                                                        <span class="reaction-emoji"
+                                                            onclick="addReaction({{ $message['id'] }}, '{{ $reaction }}')">
+                                                            {{ $reaction }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
                                             </div>
                                             <div class="flex items-center gap-2 justify-end">
                                                 @if (!empty($message['reactions']))
-                                                    <div class="flex items-center gap-1 mt-1">
-                                                        @foreach (array_unique(array_column($message['reactions']->toArray(), 'reaction')) as $reaction)
-                                                            <span class="reaction">
-                                                                {{ $reaction }}
-                                                            </span>
-                                                        @endforeach
-                                                    </div>
-                                                @endif
+                                                <div class="flex items-center gap-1 mt-1">
+                                                    @foreach (collect($message['reactions'])->groupBy('reaction') as $reaction => $reactions)
+                                                        <span class="reaction"
+                                                            wire:click="addReaction({{ $message['id'] }}, '{{ $reaction }}')"
+                                                            title="{{ collect($reactions)->pluck('user.name')->join(', ') }}">
+                                                            {{ $reaction }}
+                                                            @if (count($reactions) > 1)
+                                                                {{ count($reactions) }}
+                                                            @endif
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+
                                                 <div class="justify-start items-center inline-flex">
                                                     <h3 class="text-gray-500 text-xs font-normal leading-4 py-1">
                                                         {{ \Carbon\Carbon::parse($message['created_at'])->format('h:i A') }}
                                                     </h3>
                                                     @if (!empty($message['seen_by']) && count($message['seen_by']) > 0)
-                                                    <span class="ml-1 text-xs text-gray-400">
-                                                        Seen by {{ count($message['seen_by']) }}
-                                                    </span>
-                                                @endif
-
-
+                                                        <span class="ml-1 text-xs text-gray-400">
+                                                            Seen by {{ count($message['seen_by']) }}
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
@@ -260,7 +377,7 @@
                         @endforeach
                     </div>
 
-                    {{-- Input form --}}
+                    <!-- Input form -->
                     <form wire:submit.prevent="sendMessage" wire:ignore
                         class="w-full mt-4 pl-3 pr-1 py-1 rounded-3xl border border-gray-200 items-center gap-2 inline-flex justify-between">
                         <div class="flex items-center gap-2 w-full">
@@ -320,7 +437,7 @@
                         </button>
                     </form>
 
-                    {{-- File preview section --}}
+                    <!-- File preview section -->
                     @if ($file)
                         @php
                             $mimeType = $file->getMimeType();
@@ -335,14 +452,8 @@
                                         <img src="{{ $file->temporaryUrl() }}"
                                             class="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow"
                                             alt="Image preview">
-                                        <span class="text-sm text-gray-700">{{ $fileName }}</span>
-                                    @else
-                                        <div class="mt-1 text-xs text-gray-500">
-                                            <span class="text-blue-600 hover:underline">
-                                                {{ $fileName }}
-                                            </span>
-                                        </div>
                                     @endif
+                                    <span class="text-sm text-gray-700">{{ $fileName }}</span>
                                 </div>
                                 <button type="button" wire:click="$set('file', null)"
                                     class="text-red-500 hover:text-red-700 font-bold">
@@ -358,109 +469,148 @@
 </div>
 
 @script
-    <script type="module">
-        document.addEventListener('livewire:initialized', () => {
-            // Voice recording functionality
-            let mediaRecorder;
-            let audioChunks = [];
+<script>
+    let currentOpenPicker = null;
 
-            Livewire.on('start-recording', async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        audio: true
-                    });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
+    // Toggle reaction picker visibility (make this global)
+    window.toggleReactionPicker = function(messageId) {
+    const pickerId = `reaction-picker-${messageId}`;
+    const picker = document.getElementById(pickerId);
 
-                    mediaRecorder.ondataavailable = (event) => {
-                        if (event.data.size > 0) {
-                            audioChunks.push(event.data);
-                        }
-                    };
+    if (window.currentOpenPicker && window.currentOpenPicker !== picker) {
+        window.currentOpenPicker.style.display = 'none';
+    }
 
-                    mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, {
-                            type: 'audio/wav'
-                        });
-                        const reader = new FileReader();
+    if (picker.style.display === 'block') {
+        picker.style.display = 'none';
+        window.currentOpenPicker = null;
+    } else {
+        picker.style.display = 'block';
+        window.currentOpenPicker = picker;
+    }
+};
 
-                        reader.onloadend = () => {
-                            const base64data = reader.result.split(',')[1];
-                            Livewire.dispatch('voice-recorded', {
-                                audioBlob: base64data
-                            });
-                        };
+window.addReaction = function(messageId, reaction) {
+    if (window.currentOpenPicker) {
+        window.currentOpenPicker.style.display = 'none';
+        window.currentOpenPicker = null;
+    }
 
-                        reader.readAsDataURL(audioBlob);
+    // Directly call the Livewire component method
+    Livewire.first().call('addReaction', messageId, reaction);
+};
 
-                        // Stop all tracks in the stream
-                        stream.getTracks().forEach(track => track.stop());
-                    };
+    document.addEventListener('click', function(event) {
+        if (
+            !event.target.closest('.reaction-picker') &&
+            !event.target.closest('[onclick*="toggleReactionPicker"]')
+        ) {
+            if (currentOpenPicker) {
+                currentOpenPicker.style.display = 'none';
+                currentOpenPicker = null;
+            }
+        }
+    });
 
-                    mediaRecorder.start();
-                } catch (error) {
-                    console.error('Error accessing microphone:', error);
-                    alert('Could not access microphone. Please check permissions.');
-                }
-            });
+    document.addEventListener('livewire:initialized', () => {
+        // Voice recording functionality
+        let mediaRecorder;
+        let audioChunks = [];
 
-            Livewire.on('stop-recording', () => {
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                }
-            });
 
-            // Typing indicator functionality
-            Echo.private(`group-chat.${@js($groupId)}`)
-                .listen('MessageTyping', (e) => {
-                    if (e.userId !== @js(auth()->id())) {
-                        Livewire.dispatch('user-typing', {
-                            userId: e.userId,
-                            groupId: e.groupId
-                        });
+
+        Livewire.on('start-recording', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
                     }
-                });
+                };
 
-            // Message received functionality
-            Echo.private(`group-chat.${@js($groupId)}`)
-                .listen('GroupMessageSendEvent', (e) => {
-                    @this.dispatch('message-received', {
-                        message: e.message
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const reader = new FileReader();
+
+                    reader.onloadend = () => {
+                        const base64data = reader.result.split(',')[1];
+                        Livewire.dispatch('voice-recorded', {
+                            audioBlob: base64data
+                        });
+                    };
+
+                    reader.readAsDataURL(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                alert('Could not access microphone. Please check permissions.');
+            }
+        });
+
+        Livewire.on('stop-recording', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+        });
+
+        // Typing indicator functionality
+        Echo.private(`group-chat.${@js($groupId)}`)
+            .listen('MessageTyping', (e) => {
+                if (e.userId !== @js(auth()->id())) {
+                    Livewire.dispatch('user-typing', {
+                        userId: e.userId,
+                        groupId: e.groupId
                     });
-                });
-
-            // Message seen functionality
-            Echo.private(`chat.${@js(auth()->id())}`)
-                .listen('MessageSeenEvent', (e) => {
-                    @this.dispatch('message-received');
-                });
-
-            // Message reaction functionality
-            Echo.private(`chat.${@js(auth()->id())}`)
-                .listen('MessageReactionEvent', (e) => {
-                    @this.dispatch('message-received');
-                });
-
-            // Scroll to bottom when new message arrives
-            Livewire.hook('message.processed', (component) => {
-                if (component.serverMemo.data.messages) {
-                    setTimeout(() => {
-                        let chatContainer = document.getElementById('chat-container');
-                        if (chatContainer) {
-                            chatContainer.scrollTop = chatContainer.scrollHeight;
-                        }
-                    }, 100);
                 }
             });
 
-            Livewire.on('message-load-send', () => {
+        // Message received functionality
+        Echo.private(`group-chat.${@js($groupId)}`)
+            .listen('GroupMessageSendEvent', (e) => {
+                @this.dispatch('message-received', {
+                    message: e.message
+                });
+            });
+
+        // Message seen functionality
+        Echo.private(`chat.${@js(auth()->id())}`)
+            .listen('MessageSeenEvent', (e) => {
+                @this.dispatch('message-received');
+            });
+
+        // Message reaction functionality
+        Echo.private(`chat.${@js(auth()->id())}`)
+            .listen('MessageReactionEvent', (e) => {
+                @this.dispatch('message-received');
+            });
+
+        // Scroll to bottom when new message arrives
+        Livewire.hook('message.processed', (component) => {
+            if (component.serverMemo.data.messages) {
                 setTimeout(() => {
                     let chatContainer = document.getElementById('chat-container');
                     if (chatContainer) {
                         chatContainer.scrollTop = chatContainer.scrollHeight;
                     }
                 }, 100);
-            });
+            }
         });
-    </script>
+
+        Livewire.on('message-load-send', () => {
+            setTimeout(() => {
+                let chatContainer = document.getElementById('chat-container');
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            }, 100);
+        });
+    });
+</script>
+
 @endscript
