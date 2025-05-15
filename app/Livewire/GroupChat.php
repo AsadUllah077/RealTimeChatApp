@@ -6,36 +6,38 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
-use App\Events\MessageSendEvent;
+use App\Events\GroupMessageSendEvent;
 use App\Events\MessageTyping;
-use App\Events\UnreadMessages;
 use App\Events\MessageReactionEvent;
 use App\Events\MessageSeenEvent;
 use App\Models\Message;
+use App\Models\GroupChat  as GroupChatModel;
 use App\Models\MessageReaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
-class Chat extends Component
+class GroupChat extends Component
 {
     use WithFileUploads;
 
-    public $userId, $user;
-    public $sender_id, $reciever_id, $message = '', $file;
-    public $messages = [], $new_messages = [];
+    public $groupId;
+    public $group;
+    public $sender_id;
+    public $message = '';
+    public $file;
+    public $messages = [];
     public $audioBlob;
     public $audioBlobUrl;
     public $isRecording = false;
     public $selectedMessage = null;
     public $reactionTypes = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
-    public $isTyping = false;
+    public $typingUsers = [];
 
-    public function mount($userId)
+    public function mount($groupId)
     {
-        $this->userId = $userId;
-        $this->user = User::findOrFail($userId);
+        $this->groupId = $groupId;
+        $this->group = GroupChatModel::with(['members', 'creator'])->findOrFail($groupId);
         $this->sender_id = Auth::id();
-        $this->reciever_id = $userId;
         $this->messages = $this->getMessages();
         $this->markAsReadMessages();
         $this->dispatch('message-load');
@@ -44,7 +46,7 @@ class Chat extends Component
     public function render()
     {
         $this->markAsReadMessages();
-        return view('livewire.chat');
+        return view('livewire.group-chat')->layout('layouts.app');
     }
 
     public function startRecording()
@@ -83,20 +85,15 @@ class Chat extends Component
 
         $sentMessage = Message::create([
             'sender_id' => $this->sender_id,
-            'reciever_id' => $this->reciever_id,
+            'group_id' => $this->groupId,
+            'is_group' => true,
             'audio_path' => $audioPath,
-            'is_read' => false,
         ]);
 
-        // Broadcast the message
-        broadcast(new MessageSendEvent($sentMessage))->toOthers();
-        $countUnread = $this->unReadCount();
-        broadcast(new UnreadMessages($this->sender_id, $this->reciever_id, $countUnread))->toOthers();
+        broadcast(new GroupMessageSendEvent($sentMessage))->toOthers();
 
-        // Add message to current user's messages
         $this->messages[] = $sentMessage->toArray();
         $this->clearRecording();
-
         $this->dispatch('message-load-send');
     }
 
@@ -107,26 +104,13 @@ class Chat extends Component
         }
 
         $sentMessage = $this->saveMessage();
+        broadcast(new GroupMessageSendEvent($sentMessage))->toOthers();
 
-        // Broadcast the message
-        broadcast(new MessageSendEvent($sentMessage))->toOthers();
-        $countUnread = $this->unReadCount();
-        broadcast(new UnreadMessages($this->sender_id, $this->reciever_id, $countUnread))->toOthers();
-
-        // Add message to current user's messages
         $this->messages[] = $sentMessage;
-
-        // Reset message input
         $this->message = '';
         $this->file = '';
-
-        // Dispatch frontend event
         $this->dispatch('message-load-send');
         $this->dispatch('message-sent');
-    }
-
-    public function unReadCount(){
-        return Message::where('reciever_id', $this->reciever_id)->where('is_read', false)->count();
     }
 
     #[On('message-received')]
@@ -138,83 +122,80 @@ class Chat extends Component
 
     public function markAsReadMessages()
     {
-        $unreadMessages = Message::where('sender_id', $this->reciever_id)
-            ->where('reciever_id', $this->sender_id)
-            ->where('is_read', false)
+        $unreadMessages = Message::where('group_id', $this->groupId)
+            ->where('sender_id', '!=', $this->sender_id)
+            ->whereDoesntHave('seenBy', function($query) {
+                $query->where('user_id', $this->sender_id);
+            })
             ->get();
 
         foreach ($unreadMessages as $message) {
-            $message->update(['is_read' => true]);
+            $message->seenBy()->attach($this->sender_id);
             broadcast(new MessageSeenEvent($message, $this->sender_id))->toOthers();
         }
     }
 
     public function userTyping()
     {
-        $this->isTyping = true;
-        broadcast(new MessageTyping($this->sender_id, $this->reciever_id))->toOthers();
-        $this->dispatch('typing-timeout');
+        broadcast(new MessageTyping($this->sender_id, null, $this->groupId))->toOthers();
     }
 
-    #[On('typing-timeout')]
-    public function typingTimeout()
+    #[On('user-typing')]
+    public function handleUserTyping($userId, $groupId)
     {
-        sleep(2);
-        $this->isTyping = false;
+        if ($groupId == $this->groupId) {
+            $user = User::find($userId);
+            if ($user && !in_array($user->name, $this->typingUsers)) {
+                $this->typingUsers[] = $user->name;
+            }
+
+            $this->dispatch('typing-indicator');
+
+            // Clear after 2 seconds
+            $this->dispatch('clear-typing', userId: $userId);
+        }
     }
+
+    #[On('clear-typing')]
+    public function clearTyping($userId)
+    {
+        if (($key = array_search(User::find($userId)->name, $this->typingUsers)) !== false) {
+            unset($this->typingUsers[$key]);
+        }
+    }
+
     public function saveMessage()
     {
         $fileName = $this->file ? $this->file->hashName() : null;
         $fileOriginalName = $this->file ? $this->file->getClientOriginalName() : null;
         $filePath = $this->file ? $this->file->store('chat_files', 'public') : null;
         $fileType = $this->file ? $this->file->getMimeType() : null;
-// dd($this->file);
+
         return Message::create([
             'sender_id' => $this->sender_id,
-            'reciever_id' => $this->reciever_id,
+            'group_id' => $this->groupId,
+            'is_group' => true,
             'message' => $this->message,
             'file_name' => $fileName,
             'file_path' => $filePath,
             'file_original_name' => $fileOriginalName,
             'file_type' => $fileType,
-            'is_read' => false,
         ]);
-    }
-    #[On('user-typing')]
-    public function handleUserTyping($userId)
-    {
-        if ($userId == $this->reciever_id) {
-            $this->isTyping = true;
-            $this->dispatch('clear-typing');
-        }
-    }
-
-    #[On('clear-typing')]
-    public function clearTyping()
-    {
-        sleep(2);
-        $this->isTyping = false;
     }
 
     public function getMessages()
     {
-        return Message::with(['sender:id,name', 'reactions.user'])
-            ->where(function ($query) {
-                $query->where('sender_id', $this->sender_id)
-                    ->where('reciever_id', $this->reciever_id);
-            })
-            ->orWhere(function ($query) {
-                $query->where('sender_id', $this->reciever_id)
-                    ->where('reciever_id', $this->sender_id);
-            })
+        return Message::with(['sender:id,name', 'reactions.user', 'seenBy:id,name'])
+            ->where('group_id', $this->groupId)
             ->orderBy('created_at')
             ->get()
             ->map(function($message) {
-                $message->is_seen = $message->is_read;
+                $message->is_seen = $message->isSeenBy(Auth::id());
                 return $message;
             })
             ->toArray();
     }
+
     public function reactToMessage($messageId, $reaction)
     {
         $message = Message::findOrFail($messageId);
@@ -246,9 +227,9 @@ class Chat extends Component
 
         $this->messages = $this->getMessages();
     }
+
     public function selectMessage($messageId)
     {
         $this->selectedMessage = $messageId;
     }
-
 }

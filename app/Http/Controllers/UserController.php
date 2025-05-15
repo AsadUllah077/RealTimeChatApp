@@ -22,6 +22,10 @@ class UserController extends Controller
         return view('dashboard', compact('users'));
     }
 
+    public function groupChatList(){
+        return view('group-chats');
+    }
+
     public function userChat($id){
         $userId = $id;
         return view('chat-page', compact('userId'));

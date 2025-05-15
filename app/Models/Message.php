@@ -10,15 +10,34 @@ class Message extends Model
     protected $fillable = [
         'sender_id',
         'reciever_id',
+        'group_id',
+        'is_group',
         'message',
         'file_name',
         'file_path',
-        'audio_path',
-        'file_type',
         'file_original_name',
-        'is_read',
+        'file_type',
+        'audio_path',
+        'is_read'
     ];
 
+    public function group()
+    {
+        return $this->belongsTo(GroupChat::class, 'group_id');
+    }
+    public function reactions()
+    {
+        return $this->hasMany(MessageReaction::class);
+    }
+    public function seenBy()
+    {
+        return $this->belongsToMany(User::class, 'message_seen', 'message_id', 'user_id')
+            ->withTimestamps();
+    }
+    public function isSeenBy($userId)
+    {
+        return $this->seenBy()->where('user_id', $userId)->exists();
+    }
     public function sender()
     {
         return $this->belongsTo(User::class, 'sender_id', 'id');
@@ -35,6 +54,11 @@ class Message extends Model
             $model->created_at = Carbon::now();
         });
     }
+//     public function seen_by()
+// {
+//     return $this->hasMany(SeenMessage::class); // or your actual model
+// }
+
 
 
     public function unreadMessages()

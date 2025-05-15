@@ -62,26 +62,50 @@
                                                 {{ $message['sender']['name'] }}
                                             </h5>
                                             <div class="w-max grid">
-                                                <div class="px-3.5 py-2 bg-gray-100 rounded justify-start items-center gap-3 inline-flex">
-                                                    @if (isset($message['audio_path']) && $message['audio_path'])
+                                                <div class="px-3.5 py-2 bg-gray-100 rounded justify-start items-center gap-3 inline-flex flex-col">
+                                                    {{-- Check if audio exists --}}
+                                                    @if (!empty($message['audio_path']))
                                                         <audio controls>
                                                             <source src="{{ asset('storage/' . $message['audio_path']) }}" type="audio/wav">
-                                                            Your browser does not support audio messages.
+                                                            Your browser does not support the audio element.
                                                         </audio>
-                                                    @elseif (isset($message['file_path']) && $message['file_path'])
-                                                        {{-- Your existing file display --}}
-                                                    @else
+
+                                                    {{-- Else check if a file exists --}}
+                                                    @elseif (!empty($message['file_path']))
+                                                        @php
+                                                            $fileType = pathinfo($message['file_path'], PATHINFO_EXTENSION);
+                                                            $isImage = in_array(strtolower($fileType), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                                        @endphp
+
+                                                        {{-- Display image or file download --}}
+                                                        @if ($isImage)
+                                                            <img src="{{ asset('storage/' . $message['file_path']) }}"
+                                                                 alt="Image"
+                                                                 class="max-w-xs rounded shadow">
+                                                        @else
+                                                            <a href="{{ asset('storage/' . $message['file_path']) }}"
+                                                               target="_blank"
+                                                               class="text-blue-600 underline hover:text-blue-800 text-sm">
+                                                                📎 Download File
+                                                            </a>
+                                                        @endif
+                                                    @endif
+
+                                                    {{-- Display text message if it exists --}}
+                                                    @if (!empty($message['message']))
                                                         <h5 class="text-gray-900 text-sm font-normal leading-snug">
                                                             {{ $message['message'] }}
                                                         </h5>
                                                     @endif
                                                 </div>
+
                                                 <div class="justify-end items-center inline-flex mb-2.5">
                                                     <h6 class="text-gray-500 text-xs font-normal leading-4 py-1">
                                                         {{ \Carbon\Carbon::parse($message['created_at'])->format('h:i A') }}
                                                     </h6>
                                                 </div>
                                             </div>
+
                                         </div>
                                     </div>
                                 </div>

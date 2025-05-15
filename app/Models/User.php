@@ -46,11 +46,31 @@ class User extends Authenticatable
         ];
     }
 
-    public function unreadMessages(){
+    public function unreadMessages()
+    {
         return $this->hasMany(Message::class, 'sender_id', 'id')->where('is_read', 0);
     }
     public function messages()
-{
-    return $this->hasMany(Message::class, 'sender_id');
-}
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+    // public function groupChats()
+    // {
+    //     return $this->belongsToMany(GroupChatUser::class, 'group_chat_users', 'user_id', 'group_chat_id ');
+    // }
+    public function groupChats()
+    {
+        return $this->hasManyThrough(
+            GroupChat::class,
+            GroupChatUser::class,
+            'user_id',        // Foreign key on group_chat_users table
+            'id',             // Foreign key on group_chats table (primary key)
+            'id',             // Local key on users table
+            'group_chat_id'   // Local key on group_chat_users table
+        );
+    }
+    public function groupChatUsers()
+    {
+        return $this->hasMany(GroupChatUser::class);
+    }
 }

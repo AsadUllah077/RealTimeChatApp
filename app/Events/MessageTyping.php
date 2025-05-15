@@ -16,13 +16,15 @@ class MessageTyping implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $senderId, $recieverId;
+    public $group_id;
     /**
      * Create a new event instance.
      */
-    public function __construct($senderId, $recieverId)
+    public function __construct($senderId, $recieverId = null, $group_id = null)
     {
         $this->senderId = $senderId;
         $this->recieverId = $recieverId;
+        $this->group_id = $group_id;
     }
 
     /**
@@ -32,6 +34,12 @@ class MessageTyping implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
+         if ($this->group_id) {
+            // return new PrivateChannel('group-chat.' . $this->group_id);
+            return [
+                new PrivateChannel('chat-channel.'.$this->group_id),
+            ];
+        }
         return [
             new PrivateChannel('chat-channel.'.$this->recieverId),
         ];
